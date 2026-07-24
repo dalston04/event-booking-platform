@@ -11,15 +11,17 @@ COPY package*.json ./
 # Install all dependencies (including devDependencies for tsc)
 RUN npm ci
 
-# Copy source code and TS config files
+# Copy Prisma schema and generate Prisma Client types
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Copy source code and config files
 COPY tsconfig.json eslint.config.mjs .prettierrc ./
 COPY src ./src
+COPY public ./public
 
 # Compile TypeScript to JavaScript in /app/dist
 RUN npm run build
-
-# Prune devDependencies to keep only production dependencies
-RUN npm prune --production
 
 # ==========================================
 # STAGE 2: Production Lightweight Image
@@ -34,9 +36,11 @@ ENV NODE_ENV=production
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S expressjs -u 1001
 
-# Copy production node_modules & compiled JS dist from builder
+# Copy production package.json, prisma schema, node_modules, public, & compiled JS dist
 COPY --from=builder /app/package.json ./
+COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/dist ./dist
 
 # Change ownership to non-root user

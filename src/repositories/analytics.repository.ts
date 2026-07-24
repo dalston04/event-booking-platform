@@ -42,8 +42,15 @@ export class AnalyticsRepository {
         }),
       ]);
 
-      const totalBookings = confirmedBookings.reduce((sum, b) => sum + b.seatCount, 0);
-      const totalRevenue = confirmedBookings.reduce((sum, b) => sum + b.seatCount * b.event.price, 0);
+      const totalBookings = confirmedBookings.reduce(
+        (sum: number, b: { seatCount: number }) => sum + b.seatCount,
+        0,
+      );
+      const totalRevenue = confirmedBookings.reduce(
+        (sum: number, b: { seatCount: number; event: { price: number } }) =>
+          sum + b.seatCount * b.event.price,
+        0,
+      );
 
       return {
         totalUsers,
