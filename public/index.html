@@ -304,7 +304,7 @@
 
     /* Auth Box */
     .auth-box {
-      max-width: 420px;
+      max-width: 440px;
       margin: 2rem auto;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
@@ -497,16 +497,36 @@
     <!-- Pane 2: Authentication -->
     <section id="pane-auth" class="section-pane">
       <div class="auth-box">
-        <!-- Logged Out Card -->
+        <!-- Logged Out Mode Toggle -->
         <div id="loggedOutForm">
-          <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In</h2>
-          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Enter your credentials to issue JWT tokens</p>
-          <form onsubmit="executeLogin(event)">
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; background: rgba(0,0,0,0.25); padding: 0.25rem; border-radius: var(--radius-sm);">
+            <button type="button" class="tab-item active" id="modeBtnLogin" style="flex: 1; text-align: center;" onclick="setAuthMode('login')">Sign In</button>
+            <button type="button" class="tab-item" id="modeBtnRegister" style="flex: 1; text-align: center;" onclick="setAuthMode('register')">Register Account</button>
+          </div>
+
+          <!-- Sign In Form -->
+          <form id="formSignIn" onsubmit="executeLogin(event)">
             <label style="font-size: 0.8rem; color: var(--text-secondary);">Email</label>
-            <input type="email" id="emailInput" class="input-field" value="test.user@example.com" required>
+            <input type="email" id="loginEmailInput" class="input-field" value="admin@eventsync.io" required>
             <label style="font-size: 0.8rem; color: var(--text-secondary);">Password</label>
-            <input type="password" id="passwordInput" class="input-field" value="SuperSecretPassword123!" required>
+            <input type="password" id="loginPasswordInput" class="input-field" value="SuperSecretPassword123!" required>
             <button type="submit" class="btn-primary">Authenticate</button>
+          </form>
+
+          <!-- Register Form -->
+          <form id="formRegister" style="display: none;" onsubmit="executeRegister(event)">
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Full Name</label>
+            <input type="text" id="regNameInput" class="input-field" value="Admin User" required>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Email</label>
+            <input type="email" id="regEmailInput" class="input-field" value="admin@eventsync.io" required>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Password</label>
+            <input type="password" id="regPasswordInput" class="input-field" value="SuperSecretPassword123!" required>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Account Role</label>
+            <select id="regRoleInput" class="input-field" style="background: rgba(0,0,0,0.5);">
+              <option value="ADMIN" selected>ADMIN (Can create events & view analytics)</option>
+              <option value="USER">USER (Regular booking account)</option>
+            </select>
+            <button type="submit" class="btn-primary">Register Account</button>
           </form>
         </div>
 
@@ -588,22 +608,22 @@
       <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Create New Event</h2>
       <form onsubmit="submitCreateEvent(event)">
         <label style="font-size: 0.8rem; color: var(--text-secondary);">Title</label>
-        <input type="text" id="evtTitle" class="input-field" placeholder="AI & Cloud Summit 2026" required>
+        <input type="text" id="evtTitle" class="input-field" value="Global Tech Summit 2026" required>
         
         <label style="font-size: 0.8rem; color: var(--text-secondary);">Description</label>
-        <input type="text" id="evtDesc" class="input-field" placeholder="Full-day developer conference..." required>
+        <input type="text" id="evtDesc" class="input-field" value="Join top engineers for live sessions on cloud infrastructure." required>
         
         <label style="font-size: 0.8rem; color: var(--text-secondary);">Location</label>
-        <input type="text" id="evtLoc" class="input-field" placeholder="Seattle Tech Center" required>
+        <input type="text" id="evtLoc" class="input-field" value="San Francisco Convention Center" required>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <div>
             <label style="font-size: 0.8rem; color: var(--text-secondary);">Capacity</label>
-            <input type="number" id="evtCap" class="input-field" value="50" required>
+            <input type="number" id="evtCap" class="input-field" value="100" required>
           </div>
           <div>
             <label style="font-size: 0.8rem; color: var(--text-secondary);">Price ($)</label>
-            <input type="number" step="0.01" id="evtPrice" class="input-field" value="99.99" required>
+            <input type="number" step="0.01" id="evtPrice" class="input-field" value="149.99" required>
           </div>
         </div>
 
@@ -626,7 +646,7 @@
       popup.className = 'toast-popup';
       popup.innerText = text;
       document.body.appendChild(popup);
-      setTimeout(() => popup.remove(), 3000);
+      setTimeout(() => popup.remove(), 3500);
     }
 
     function initWebSockets() {
@@ -674,6 +694,13 @@
       if (paneId === 'analytics') loadAnalytics();
     }
 
+    function setAuthMode(mode) {
+      document.getElementById('modeBtnLogin').classList.toggle('active', mode === 'login');
+      document.getElementById('modeBtnRegister').classList.toggle('active', mode === 'register');
+      document.getElementById('formSignIn').style.display = mode === 'login' ? 'block' : 'none';
+      document.getElementById('formRegister').style.display = mode === 'register' ? 'block' : 'none';
+    }
+
     function refreshAuthState() {
       const btnCreate = document.getElementById('btnCreateEvent');
       if (currentUser && token) {
@@ -716,8 +743,8 @@
 
     async function executeLogin(e) {
       e.preventDefault();
-      const email = document.getElementById('emailInput').value;
-      const password = document.getElementById('passwordInput').value;
+      const email = document.getElementById('loginEmailInput').value;
+      const password = document.getElementById('loginPasswordInput').value;
 
       try {
         const res = await fetch('/api/v1/auth/login', {
@@ -739,6 +766,36 @@
         }
       } catch (err) {
         showToast('Login request failed.');
+      }
+    }
+
+    async function executeRegister(e) {
+      e.preventDefault();
+      const fullName = document.getElementById('regNameInput').value;
+      const email = document.getElementById('regEmailInput').value;
+      const password = document.getElementById('regPasswordInput').value;
+      const role = document.getElementById('regRoleInput').value;
+
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, email, password, role })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          token = json.data.tokens.accessToken;
+          localStorage.setItem('accessToken', token);
+          currentUser = json.data.user;
+          refreshAuthState();
+          showToast(`Registered successfully as ${currentUser.fullName} (${currentUser.role})`);
+          activatePane('events');
+        } else {
+          showToast(`Registration Error: ${json.message}`);
+        }
+      } catch (err) {
+        showToast('Registration request failed.');
       }
     }
 
@@ -794,7 +851,7 @@
             if (socket) socket.emit('join-event-room', item.id);
           });
         } else {
-          grid.innerHTML = '<p style="color: var(--text-tertiary);">No events found matching criteria.</p>';
+          grid.innerHTML = '<p style="color: var(--text-tertiary);">No events found. Click Authentication to Register an ADMIN account and create your first event!</p>';
         }
       } catch (err) {
         console.error(err);
@@ -803,7 +860,7 @@
 
     async function reserveTicket(eventId) {
       if (!token) {
-        showToast('Please sign in first.');
+        showToast('Please sign in or register an account first.');
         activatePane('auth');
         return;
       }
