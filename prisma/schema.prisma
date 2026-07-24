@@ -1,0 +1,135 @@
+// ==========================================
+// Prisma Database Schema Definition
+// Event Booking & Analytics Platform SaaS
+// ==========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Roles Enum
+enum Role {
+  USER
+  ADMIN
+}
+
+// Booking Status Enum
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+// ------------------------------------------
+// 1. User Entity Model
+// ------------------------------------------
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  role         Role       @default(USER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relationships
+  eventsOrganized Event[]    @relation("OrganizedEvents")
+  bookings        Booking[]
+  waitlists       Waitlist[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+// ------------------------------------------
+// 2. Event Entity Model
+// ------------------------------------------
+model Event {
+  id             String      @id @default(uuid())
+  title          String
+  description    String
+  location       String
+  startTime      DateTime
+  endTime        DateTime
+  capacity       Int
+  availableSeats Int
+  price          Float
+  organizerId    String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relationships
+  organizer User       @relation("OrganizedEvents", fields: [organizerId], references: [id], onDelete: Cascade)
+  bookings  Booking[]
+  waitlist  Waitlist[]
+
+  // Indexes for Fast Filter, Search & Pagination
+  @@index([startTime, endTime])
+  @@index([organizerId])
+  @@map("events")
+}
+
+// ------------------------------------------
+// 3. Booking Entity Model
+// ------------------------------------------
+model Booking {
+  id        String        @id @default(uuid())
+  userId    String
+  eventId   String
+  seatCount Int           @default(1)
+  status    BookingStatus @default(CONFIRMED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relationships
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Indexes for User Booking History & Event Seat Queries
+  @@index([userId])
+  @@index([eventId])
+  @@map("bookings")
+}
+
+// ------------------------------------------
+// 4. Waitlist Entity Model
+// ------------------------------------------
+model Waitlist {
+  id        String   @id @default(uuid())
+  userId    String
+  eventId   String
+  position  Int
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Unique constraint: A user can only join a waitlist once per event
+  @@unique([userId, eventId])
+  @@index([eventId, position])
+  @@map("waitlists")
+}
+
+// ------------------------------------------
+// 5. Audit Log Entity Model
+// ------------------------------------------
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  userId    String?
+  details   Json
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

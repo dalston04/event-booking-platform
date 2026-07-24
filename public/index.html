@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventSync Platform — Enterprise SaaS Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --bg-dark: #08090d;
+      --bg-surface: #10121a;
+      --bg-surface-hover: #171a26;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --emerald: #10b981;
+      --emerald-subtle: rgba(16, 185, 129, 0.12);
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--primary), #3b82f6);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: white;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .pulse-green { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); }
+    .pulse-blue { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+    /* Segment Control Tabs */
+    .tab-bar {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.75rem 2rem;
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tab-item {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 0.55rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+    }
+
+    .tab-item:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-item.active {
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1300px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .section-pane {
+      display: none;
+    }
+
+    .section-pane.active {
+      display: block;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .section-sub {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.2rem;
+    }
+
+    /* Event Cards Grid */
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .card-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .card-item:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding-top: 0.85rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .badge-seats {
+      background: var(--emerald-subtle);
+      color: #34d399;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .badge-soldout {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .price-amount {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-amber {
+      background: var(--amber);
+      color: #000;
+    }
+
+    .btn-amber:hover {
+      background: #d97706;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.12);
+      border: 1px solid rgba(244, 63, 94, 0.25);
+      color: var(--rose);
+      padding: 0.5rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-danger:hover {
+      background: var(--rose);
+      color: white;
+    }
+
+    /* Input & Search */
+    .search-bar {
+      width: 320px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.85rem;
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .search-bar:focus {
+      border-color: var(--primary);
+    }
+
+    /* Auth Box */
+    .auth-box {
+      max-width: 420px;
+      margin: 2rem auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+    }
+
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      outline: none;
+      margin-top: 0.35rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-field:focus {
+      border-color: var(--primary);
+    }
+
+    /* Analytics Table & Metrics */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+
+    .metric-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-val {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-top: 0.4rem;
+      letter-spacing: -0.03em;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .data-table th, .data-table td {
+      padding: 0.85rem 1.25rem;
+      text-align: left;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .data-table th {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-tertiary);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .terminal-window {
+      background: #050608;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      height: 220px;
+      overflow-y: auto;
+    }
+
+    .log-line {
+      padding: 0.25rem 0;
+      color: #34d399;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    /* Modal Overlay */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 900;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-backdrop.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    /* Toast Notification */
+    .toast-popup {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      font-weight: 500;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand-logo">
+      <div class="brand-icon">E</div>
+      <span>EventSync Engine</span>
+    </div>
+    <div class="system-status">
+      <div class="status-pill">
+        <span class="pulse-dot pulse-green"></span> REST API
+      </div>
+      <div class="status-pill">
+        <span class="pulse-dot pulse-blue"></span> WebSockets: <span id="socketLabel">Connecting</span>
+      </div>
+      <div class="status-pill" id="userBadge">
+        Guest Session
+      </div>
+    </div>
+  </header>
+
+  <!-- Segment Tab Switcher -->
+  <nav class="tab-bar">
+    <button class="tab-item active" id="tab-events" onclick="activatePane('events')">Events</button>
+    <button class="tab-item" id="tab-auth" onclick="activatePane('auth')">Authentication</button>
+    <button class="tab-item" id="tab-bookings" onclick="activatePane('bookings')">My Bookings</button>
+    <button class="tab-item" id="tab-analytics" onclick="activatePane('analytics')">Analytics</button>
+  </nav>
+
+  <!-- Main Body Content -->
+  <main>
+    <!-- Pane 1: Events List -->
+    <section id="pane-events" class="section-pane active">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Event Marketplace</h1>
+          <p class="section-sub">Real-time seat availability backed by atomic PostgreSQL transactions</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <input type="text" id="searchInput" class="search-bar" placeholder="Search events..." oninput="debounceSearch()">
+          <button class="btn-outline" id="btnCreateEvent" style="display: none;" onclick="openCreateModal()">+ Create Event</button>
+          <button class="btn-outline" onclick="loadEvents()">Refresh</button>
+        </div>
+      </div>
+      <div id="eventsGrid" class="grid-cards">
+        <p style="color: var(--text-tertiary);">Loading event records...</p>
+      </div>
+    </section>
+
+    <!-- Pane 2: Authentication -->
+    <section id="pane-auth" class="section-pane">
+      <div class="auth-box">
+        <!-- Logged Out Card -->
+        <div id="loggedOutForm">
+          <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In</h2>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">Enter your credentials to issue JWT tokens</p>
+          <form onsubmit="executeLogin(event)">
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Email</label>
+            <input type="email" id="emailInput" class="input-field" value="test.user@example.com" required>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Password</label>
+            <input type="password" id="passwordInput" class="input-field" value="SuperSecretPassword123!" required>
+            <button type="submit" class="btn-primary">Authenticate</button>
+          </form>
+        </div>
+
+        <!-- Logged In Card -->
+        <div id="loggedInState" style="display: none; text-align: center;">
+          <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--emerald); margin-bottom: 0.25rem;">Active Session</h2>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;" id="userProfileText">User Profile</p>
+          <button class="btn-danger" style="width: 100%;" onclick="executeLogout()">Sign Out</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pane 3: My Bookings -->
+    <section id="pane-bookings" class="section-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">My Bookings</h1>
+          <p class="section-sub">Ticket reservations, 1-click cancellation, and seat auto-recovery</p>
+        </div>
+      </div>
+      <div id="bookingsList">
+        <p style="color: var(--text-tertiary);">Sign in to view your reservation history.</p>
+      </div>
+    </section>
+
+    <!-- Pane 4: Analytics -->
+    <section id="pane-analytics" class="section-pane">
+      <div class="section-header">
+        <div>
+          <h1 class="section-title">Executive Analytics</h1>
+          <p class="section-sub">Platform metrics aggregated via PostgreSQL type-safe queries</p>
+        </div>
+      </div>
+      
+      <div class="metrics-row">
+        <div class="metric-card">
+          <div class="metric-title">Users</div>
+          <div class="metric-val" id="metricUsers">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Events</div>
+          <div class="metric-val" id="metricEvents">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Bookings</div>
+          <div class="metric-val" id="metricBookings">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Revenue</div>
+          <div class="metric-val" style="color: var(--emerald);" id="metricRevenue">$0.00</div>
+        </div>
+      </div>
+
+      <h3 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-secondary);">Top Performing Events (SQL Dense Rank)</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Event Title</th>
+            <th>Tickets Sold</th>
+            <th>Total Revenue</th>
+          </tr>
+        </thead>
+        <tbody id="topEventsTable">
+          <tr><td colspan="4" style="color: var(--text-tertiary);">Loading top events...</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text-secondary);">Real-Time Socket.IO Telemetry</h3>
+      <div class="terminal-window" id="terminalFeed">
+        <div class="log-line">[System Initialized]: Listening for Socket.IO seat updates...</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Create Event Modal -->
+  <div class="modal-backdrop" id="createModal">
+    <div class="modal-card">
+      <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem;">Create New Event</h2>
+      <form onsubmit="submitCreateEvent(event)">
+        <label style="font-size: 0.8rem; color: var(--text-secondary);">Title</label>
+        <input type="text" id="evtTitle" class="input-field" placeholder="AI & Cloud Summit 2026" required>
+        
+        <label style="font-size: 0.8rem; color: var(--text-secondary);">Description</label>
+        <input type="text" id="evtDesc" class="input-field" placeholder="Full-day developer conference..." required>
+        
+        <label style="font-size: 0.8rem; color: var(--text-secondary);">Location</label>
+        <input type="text" id="evtLoc" class="input-field" placeholder="Seattle Tech Center" required>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Capacity</label>
+            <input type="number" id="evtCap" class="input-field" value="50" required>
+          </div>
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-secondary);">Price ($)</label>
+            <input type="number" step="0.01" id="evtPrice" class="input-field" value="99.99" required>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;">
+          <button type="button" class="btn-outline" onclick="closeCreateModal()">Cancel</button>
+          <button type="submit" class="btn-primary" style="width: auto; margin-top: 0;">Create Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let socket;
+    let currentUser = null;
+    let token = localStorage.getItem('accessToken') || '';
+    let searchTimeout;
+
+    function showToast(text) {
+      const popup = document.createElement('div');
+      popup.className = 'toast-popup';
+      popup.innerText = text;
+      document.body.appendChild(popup);
+      setTimeout(() => popup.remove(), 3000);
+    }
+
+    function initWebSockets() {
+      socket = io();
+      socket.on('connect', () => {
+        document.getElementById('socketLabel').innerText = 'Active';
+        appendLog('[Socket.IO]: Connected to server gateway.');
+      });
+
+      socket.on('seat:updated', (data) => {
+        appendLog(`[Seat Broadcast]: Event ${data.eventId} -> ${data.availableSeats} seats remaining.`);
+        const badge = document.getElementById(`seats-${data.eventId}`);
+        if (badge) {
+          badge.innerText = `${data.availableSeats} Seats Available`;
+        }
+        loadEvents();
+      });
+
+      socket.on('live:booking', (data) => {
+        appendLog(`[Booking Broadcast]: Ticket reserved for Event ${data.eventId}`);
+        loadAnalytics();
+      });
+    }
+
+    function appendLog(msg) {
+      const feed = document.getElementById('terminalFeed');
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerText = `${new Date().toLocaleTimeString()} ${msg}`;
+      feed.prepend(line);
+    }
+
+    function activatePane(paneId) {
+      document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.section-pane').forEach(el => el.classList.remove('active'));
+
+      const activeBtn = document.getElementById(`tab-${paneId}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const activePane = document.getElementById(`pane-${paneId}`);
+      if (activePane) activePane.classList.add('active');
+
+      if (paneId === 'events') loadEvents();
+      if (paneId === 'bookings') loadBookings();
+      if (paneId === 'analytics') loadAnalytics();
+    }
+
+    function refreshAuthState() {
+      const btnCreate = document.getElementById('btnCreateEvent');
+      if (currentUser && token) {
+        document.getElementById('loggedOutForm').style.display = 'none';
+        document.getElementById('loggedInState').style.display = 'block';
+        document.getElementById('userProfileText').innerText = `${currentUser.fullName} (${currentUser.email}) • Role: ${currentUser.role}`;
+        document.getElementById('userBadge').innerText = `${currentUser.fullName} (${currentUser.role})`;
+        if (currentUser.role === 'ADMIN') btnCreate.style.display = 'block';
+      } else {
+        document.getElementById('loggedOutForm').style.display = 'block';
+        document.getElementById('loggedInState').style.display = 'none';
+        document.getElementById('userBadge').innerText = 'Guest Session';
+        btnCreate.style.display = 'none';
+      }
+    }
+
+    async function checkExistingSession() {
+      if (!token) {
+        refreshAuthState();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/auth/me?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          currentUser = json.data.user;
+          refreshAuthState();
+        } else {
+          executeLogout();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function executeLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('emailInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      try {
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+          token = json.data.tokens.accessToken;
+          localStorage.setItem('accessToken', token);
+          currentUser = json.data.user;
+          refreshAuthState();
+          showToast(`Authenticated as ${currentUser.fullName}`);
+          activatePane('events');
+        } else {
+          showToast(`Auth Failed: ${json.message}`);
+        }
+      } catch (err) {
+        showToast('Login request failed.');
+      }
+    }
+
+    function executeLogout() {
+      token = '';
+      currentUser = null;
+      localStorage.removeItem('accessToken');
+      refreshAuthState();
+      showToast('Signed out.');
+    }
+
+    function debounceSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(loadEvents, 300);
+    }
+
+    async function loadEvents() {
+      try {
+        const search = document.getElementById('searchInput').value;
+        const queryParam = search ? `&search=${encodeURIComponent(search)}` : '';
+        const res = await fetch(`/api/v1/events?page=1&limit=10${queryParam}&t=${Date.now()}`, {
+          cache: 'no-store'
+        });
+        const json = await res.json();
+        const grid = document.getElementById('eventsGrid');
+
+        if (json.status === 'success' && json.data.events && json.data.events.length > 0) {
+          grid.innerHTML = json.data.events.map(item => {
+            const isSoldOut = item.availableSeats <= 0;
+            return `
+              <div class="card-item">
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.35rem;">${item.title}</h3>
+                  <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 1rem;">${item.description}</p>
+                  <div style="font-size: 0.75rem; color: var(--text-tertiary);">📍 ${item.location}</div>
+                </div>
+                <div>
+                  <div class="card-meta">
+                    <span class="price-amount">$${Number(item.price).toFixed(2)}</span>
+                    <span class="badge-seats ${isSoldOut ? 'badge-soldout' : ''}" id="seats-${item.id}">
+                      ${isSoldOut ? 'Sold Out (Waitlist Active)' : `${item.availableSeats} / ${item.capacity} Available`}
+                    </span>
+                  </div>
+                  <button class="${isSoldOut ? 'btn-primary btn-amber' : 'btn-primary'}" onclick="reserveTicket('${item.id}')">
+                    ${isSoldOut ? 'Join Waitlist' : 'Reserve 1 Seat'}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          json.data.events.forEach(item => {
+            if (socket) socket.emit('join-event-room', item.id);
+          });
+        } else {
+          grid.innerHTML = '<p style="color: var(--text-tertiary);">No events found matching criteria.</p>';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function reserveTicket(eventId) {
+      if (!token) {
+        showToast('Please sign in first.');
+        activatePane('auth');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ eventId, seatCount: 1 })
+        });
+
+        const json = await res.json();
+        if (json.status === 'success') {
+          const type = json.data.type === 'WAITLIST' ? 'Added to Waitlist' : 'Ticket Reserved';
+          showToast(`🎉 ${type}`);
+          await loadEvents();
+          loadAnalytics();
+        } else {
+          showToast(`Error: ${json.message}`);
+        }
+      } catch (err) {
+        showToast('Booking request failed.');
+      }
+    }
+
+    async function cancelReservation(bookingId) {
+      if (!token) return;
+      try {
+        const res = await fetch(`/api/v1/bookings/${bookingId}/cancel`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+          showToast('Reservation Cancelled & Seat Recovered');
+          await loadBookings();
+          await loadEvents();
+          loadAnalytics();
+        } else {
+          showToast(`Cancellation Error: ${json.message}`);
+        }
+      } catch (err) {
+        showToast('Cancel request failed.');
+      }
+    }
+
+    async function loadBookings() {
+      const container = document.getElementById('bookingsList');
+      if (!token) {
+        container.innerHTML = '<p style="color: var(--text-tertiary);">Sign in to view your reservation history.</p>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/bookings/history?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data.bookings && json.data.bookings.length > 0) {
+          container.innerHTML = json.data.bookings.map(b => `
+            <div class="card-item" style="margin-bottom: 1rem; flex-direction: row; align-items: center; justify-content: space-between;">
+              <div>
+                <span style="font-weight: 600; font-size: 0.95rem;">${b.event ? b.event.title : 'Reservation'}</span>
+                <span class="badge-seats" style="margin-left: 0.5rem;">${b.status}</span>
+                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 0.3rem;">
+                  Seats Reserved: ${b.seatCount} • Date: ${new Date(b.createdAt).toLocaleString()}
+                </p>
+              </div>
+              ${b.status === 'CONFIRMED' ? `<button class="btn-danger" onclick="cancelReservation('${b.id}')">Cancel Booking</button>` : ''}
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<p style="color: var(--text-tertiary);">No booking records found.</p>';
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadAnalytics() {
+      if (!token) {
+        appendLog('[Analytics]: Authenticate as ADMIN to load metrics.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/v1/analytics/dashboard?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          const { overview, topEvents } = json.data;
+          document.getElementById('metricUsers').innerText = overview.totalUsers;
+          document.getElementById('metricEvents').innerText = overview.totalEvents;
+          document.getElementById('metricBookings').innerText = overview.totalBookings;
+          document.getElementById('metricRevenue').innerText = `$${Number(overview.totalRevenue).toFixed(2)}`;
+
+          const tableBody = document.getElementById('topEventsTable');
+          if (topEvents && topEvents.length > 0) {
+            tableBody.innerHTML = topEvents.map(evt => `
+              <tr>
+                <td><strong>#${evt.rank}</strong></td>
+                <td>${evt.title}</td>
+                <td>${evt.ticketsSold} tickets</td>
+                <td style="color: var(--emerald); font-weight: 600;">$${Number(evt.revenue).toFixed(2)}</td>
+              </tr>
+            `).join('');
+          } else {
+            tableBody.innerHTML = '<tr><td colspan="4" style="color: var(--text-tertiary);">No sales data registered yet.</td></tr>';
+          }
+
+          appendLog(`[Analytics Updated]: Revenue=$${overview.totalRevenue.toFixed(2)}, Bookings=${overview.totalBookings}`);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function openCreateModal() {
+      document.getElementById('createModal').classList.add('active');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.remove('active');
+    }
+
+    async function submitCreateEvent(e) {
+      e.preventDefault();
+      const title = document.getElementById('evtTitle').value;
+      const description = document.getElementById('evtDesc').value;
+      const location = document.getElementById('evtLoc').value;
+      const capacity = Number(document.getElementById('evtCap').value);
+      const price = Number(document.getElementById('evtPrice').value);
+
+      const startTime = new Date(Date.now() + 86400000).toISOString(); // Tomorrow
+      const endTime = new Date(Date.now() + 86400000 + 28800000).toISOString();
+
+      try {
+        const res = await fetch('/api/v1/events', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ title, description, location, capacity, price, startTime, endTime })
+        });
+        const json = await res.json();
+        if (json.status === 'success') {
+          showToast('🎉 Event Created Successfully');
+          closeCreateModal();
+          await loadEvents();
+          loadAnalytics();
+        } else {
+          showToast(`Create Error: ${json.message}`);
+        }
+      } catch (err) {
+        showToast('Failed to create event.');
+      }
+    }
+
+    // Initialize Page
+    initWebSockets();
+    checkExistingSession();
+    loadEvents();
+  </script>
+</body>
+</html>

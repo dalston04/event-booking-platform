@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: event-booking-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard (Neon PostgreSQL connection string)
+      - key: REDIS_HOST
+        sync: false # Set in Render Dashboard (Upstash Redis host)
+      - key: REDIS_PORT
+        sync: false # Set in Render Dashboard (Upstash Redis port)
+      - key: REDIS_PASSWORD
+        sync: false # Set in Render Dashboard (Upstash Redis password)
+      - key: JWT_SECRET
+        generateValue: true # Render generates secure random 32+ char key
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
