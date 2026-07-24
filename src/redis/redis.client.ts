@@ -2,20 +2,21 @@ import { Redis } from 'ioredis';
 import { env } from '../config/env.config.js';
 import { logger } from '../utils/logger.js';
 
+const isProduction = env.NODE_ENV === 'production' || env.REDIS_HOST.includes('upstash.io');
+
 export const redis = new Redis({
   host: env.REDIS_HOST,
   port: env.REDIS_PORT,
   password: env.REDIS_PASSWORD || undefined,
+  tls: isProduction ? {} : undefined, // TLS encryption required for Upstash Cloud Redis
   lazyConnect: true,
   maxRetriesPerRequest: null,
   retryStrategy(times: number): number | null {
     if (times > 5) {
-      logger.warn('[Redis Connection]: Max connection retries reached. Operating in fail-open fallback mode.');
-      return null; // Stop retrying after 5 attempts so Node app doesn't crash
+      logger.warn('[Redis Connection]: Max retries reached. Fallback mode active.');
+      return null;
     }
-    const delay = Math.min(times * 200, 2000);
-    logger.warn(`[Redis Connection]: Retrying connection (Attempt ${times})...`);
-    return delay;
+    return Math.min(times * 200, 2000);
   },
 });
 

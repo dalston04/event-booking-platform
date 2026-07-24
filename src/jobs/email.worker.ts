@@ -3,6 +3,8 @@ import { EMAIL_QUEUE_NAME, EmailJobData } from '../queues/email.queue.js';
 import { env } from '../config/env.config.js';
 import { logger } from '../utils/logger.js';
 
+const isProduction = env.NODE_ENV === 'production' || env.REDIS_HOST.includes('upstash.io');
+
 /**
  * Background Email Worker Consumer
  * Processes asynchronous jobs from Redis queue
@@ -22,6 +24,7 @@ export const emailWorker = new Worker<EmailJobData>(
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
       password: env.REDIS_PASSWORD || undefined,
+      tls: isProduction ? {} : undefined, // Enable TLS for Upstash cloud Redis
     },
     concurrency: 5,
   },
